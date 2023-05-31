@@ -1,10 +1,14 @@
 package com.like.likecard.webViewProject
 
 import android.annotation.TargetApi
+import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -14,10 +18,13 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.like.likecard.webViewProject.databinding.ActivityMainBinding
+import com.like.likecard.webViewProject.databinding.DialogConfirmExitBinding
 import java.io.File
 import java.lang.ref.WeakReference
+
 
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
@@ -27,6 +34,23 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root )
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        window.decorView.apply {
+            // Hide both the navigation bar and the status bar.
+            // SYSTEM_UI_FLAG_FULLSCREEN is only available on Android 4.1 and higher, but as
+            // a general rule, you should design your app to hide the status bar whenever you
+            // hide the navigation bar.
+            systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_FULLSCREEN
+        }
+   /*     @Suppress("DEPRECATION")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.hide(WindowInsets.Type.statusBars())
+        } else {
+
+        }*/
+
         binding.web.settings.javaScriptEnabled = true
         binding.web.setInitialScale(1);
         binding.web.getSettings().setLoadWithOverviewMode(true);
@@ -84,10 +108,39 @@ class MainActivity : AppCompatActivity() {
         if (binding.web.canGoBack()) {
             binding.web.goBack()
         } else {
-            binding
-            super.onBackPressed()
+            openConfirmExitDialog()
+            //super.onBackPressed()
         }
     }
+    var alertDialog:AlertDialog?= null
+    private fun openConfirmExitDialog() {
+        val inflater = this.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+
+        if (alertDialog != null) if (alertDialog!!.isShowing()) return
+
+
+        alertDialog = AlertDialog.Builder(this).create()
+
+        alertDialog!!.getWindow()?.setBackgroundDrawableResource(R.drawable.bg_btn_primary)
+        val confirmBinding: DialogConfirmExitBinding = DialogConfirmExitBinding.inflate(inflater)
+
+        alertDialog!!.setView(confirmBinding.root)
+
+        alertDialog!!.setCancelable(false)
+        alertDialog!!.show()
+
+        confirmBinding.title.setText("Exit App")
+        confirmBinding.contant.setText("Are You Sure You Want To Exit?")
+        confirmBinding.confirmButton.setText("Ok")
+        confirmBinding.confirmButton.setOnClickListener { view1 ->
+finish()
+        }
+
+
+        confirmBinding.cancelButton.setOnClickListener { view1 -> alertDialog!!.dismiss() }
+
+    }
+
     private fun getMultipleContentLauncher(): ActivityResultLauncher<String> {
         return this.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { list ->
             if (list.isEmpty()) {
