@@ -4,14 +4,14 @@ import android.annotation.TargetApi
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
+import android.view.View
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -28,8 +28,22 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root )
         binding.web.settings.javaScriptEnabled = true
+        binding.web.setInitialScale(1);
+        binding.web.getSettings().setLoadWithOverviewMode(true);
+        binding.web.getSettings().setUseWideViewPort(true);
         binding.web.getSettings().setDomStorageEnabled(true);
+        binding.web.getSettings().setAllowFileAccess(true);
         binding.web.getSettings().setDatabaseEnabled(true);
+        if (Build.VERSION.SDK_INT >= 21) {
+            binding.web.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
+
+        //FOR WEBPAGE SLOW UI
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            binding.web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        } else {
+            binding.web.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
         binding.web.webChromeClient = chromeClient
         binding.web.loadUrl("https://challengexspace.fra1.digitaloceanspaces.com/ChallengeX/index.html")
 
@@ -53,7 +67,26 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+    }
 
+    override fun onStart() {
+        super.onStart()
+
+
+    }
+
+    override fun onDestroy() {
+       // binding.web.destroy()
+
+        super.onDestroy()
+    }
+    override fun onBackPressed() {
+        if (binding.web.canGoBack()) {
+            binding.web.goBack()
+        } else {
+            binding
+            super.onBackPressed()
+        }
     }
     private fun getMultipleContentLauncher(): ActivityResultLauncher<String> {
         return this.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { list ->
@@ -82,7 +115,15 @@ class AppChromeClient(private val fragmentWeakReference: WeakReference<MainActiv
         }
         openFileCallback = filePathCallback
         val webViewFragment = fragmentWeakReference.get() ?: return false
-        webViewFragment.launchGetMultipleContents("*/*")
+        if (fileChooserParams?.acceptTypes?.contains(".jpg")==true ||
+            fileChooserParams?.acceptTypes?.contains(".jpeg") ==true ||
+            fileChooserParams?.acceptTypes?.contains(".png")== true)
+        {
+            webViewFragment.launchGetMultipleContents("image/*")
+        }else{
+            webViewFragment.launchGetMultipleContents("video/*")
+
+        }
 
         return true
     }
