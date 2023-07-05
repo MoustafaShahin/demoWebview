@@ -135,6 +135,7 @@ class MainActivity : AppCompatActivity() {
         confirmBinding.contant.setText("Are You Sure You Want To Exit?")
         confirmBinding.confirmButton.setText("Ok")
         confirmBinding.confirmButton.setOnClickListener { view1 ->
+        binding.web.destroy()
 finish()
         }
 
