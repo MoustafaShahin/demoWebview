@@ -1,14 +1,16 @@
 package com.like.likecard.webViewProject
 
 import android.annotation.TargetApi
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
-import android.view.WindowInsets
 import android.view.WindowManager
+import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -20,6 +22,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat.getSystemService
+import androidx.core.content.getSystemService
 import com.like.likecard.webViewProject.databinding.ActivityMainBinding
 import com.like.likecard.webViewProject.databinding.DialogConfirmExitBinding
 import java.io.File
@@ -33,27 +37,35 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root )
+        setContentView(binding.root)
         window.setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            WindowManager.LayoutParams.FLAG_FULLSCREEN
+        )
         window.decorView.apply {
             // Hide both the navigation bar and the status bar.
             // SYSTEM_UI_FLAG_FULLSCREEN is only available on Android 4.1 and higher, but as
             // a general rule, you should design your app to hide the status bar whenever you
             // hide the navigation bar.
-            systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_FULLSCREEN
+            systemUiVisibility =
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_FULLSCREEN
         }
-   /*     @Suppress("DEPRECATION")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.hide(WindowInsets.Type.statusBars())
-        } else {
-  window.setFlags(
-            WindowManager.LayoutParams.FLAG_FULLSCREEN,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN)
-        }*/
+        /*     @Suppress("DEPRECATION")
+             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                 window.insetsController?.hide(WindowInsets.Type.statusBars())
+             } else {
+       window.setFlags(
+                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                 WindowManager.LayoutParams.FLAG_FULLSCREEN)
+             }*/
 
         binding.web.settings.javaScriptEnabled = true
+        binding.web.evaluateJavascript(
+            "javascript:navigator.clipboard.writeText = (msg) => { return Android.writeToClipboard(msg); }",
+            null
+        )
+        binding.web.addJavascriptInterface(WebAppInterface(this), "NativeAndroid");
+
         binding.web.setInitialScale(1);
         binding.web.getSettings().setLoadWithOverviewMode(true);
         binding.web.getSettings().setUseWideViewPort(true);
@@ -71,13 +83,20 @@ class MainActivity : AppCompatActivity() {
             binding.web.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         }
         binding.web.webChromeClient = chromeClient
+
         binding.web.loadUrl("https://challengexspace.fra1.digitaloceanspaces.com/ChallengeX/index.html")
 
         binding.web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: String): Boolean {
                 return false
             }
-            override fun onReceivedError(view: WebView, errorCode: Int, description: String?, failingUrl: String) {
+
+            override fun onReceivedError(
+                view: WebView,
+                errorCode: Int,
+                description: String?,
+                failingUrl: String
+            ) {
                 view.apply {
                     File(context.cacheDir, "org.chromium.android_webview").let {
                         if (!it.exists() || it.listFiles()?.size ?: 0 < 5) {
@@ -88,8 +107,17 @@ class MainActivity : AppCompatActivity() {
             }
 
             @TargetApi(Build.VERSION_CODES.M)
-            override fun onReceivedError(view: WebView, req: WebResourceRequest, rerr: WebResourceError) {
-                onReceivedError(view, rerr.errorCode, rerr.description?.toString(), req.url.toString())
+            override fun onReceivedError(
+                view: WebView,
+                req: WebResourceRequest,
+                rerr: WebResourceError
+            ) {
+                onReceivedError(
+                    view,
+                    rerr.errorCode,
+                    rerr.description?.toString(),
+                    req.url.toString()
+                )
             }
         }
 
@@ -102,10 +130,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-       // binding.web.destroy()
+        // binding.web.destroy()
 
         super.onDestroy()
     }
+
     override fun onBackPressed() {
         if (binding.web.canGoBack()) {
             binding.web.goBack()
@@ -114,7 +143,8 @@ class MainActivity : AppCompatActivity() {
             //super.onBackPressed()
         }
     }
-    var alertDialog:AlertDialog?= null
+
+    var alertDialog: AlertDialog? = null
     private fun openConfirmExitDialog() {
         val inflater = this.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
 
@@ -135,8 +165,8 @@ class MainActivity : AppCompatActivity() {
         confirmBinding.contant.setText("Are You Sure You Want To Exit?")
         confirmBinding.confirmButton.setText("Ok")
         confirmBinding.confirmButton.setOnClickListener { view1 ->
-        binding.web.destroy()
-finish()
+            binding.web.destroy()
+            finish()
         }
 
 
@@ -146,8 +176,7 @@ finish()
 
     private fun getMultipleContentLauncher(): ActivityResultLauncher<String> {
         return this.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { list ->
-            if (list.isEmpty()) {
-            }
+            if (list.isEmpty()) {}
             chromeClient.receiveFileCallback(list.toTypedArray())
         }
     }
@@ -156,7 +185,27 @@ finish()
     fun launchGetMultipleContents(type: String) {
         contentLauncher.launch(type)
     }
+
+
 }
+
+class WebAppInterface(val context: Context) {
+    @JavascriptInterface
+    fun copyToClipboard(text: String?) {
+        val clipboard: ClipboardManager? =
+            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager?
+        val clip = ClipData.newPlainText("demo", text)
+        clipboard?.setPrimaryClip(clip)
+    }
+
+    @JavascriptInterface
+    fun endWebView() {
+        (context as MainActivity).binding.web.destroy()
+        (context as MainActivity).finish()
+
+    }
+}
+
 class AppChromeClient(private val fragmentWeakReference: WeakReference<MainActivity>) :
     WebChromeClient() {
     private var openFileCallback: ValueCallback<Array<Uri>>? = null
@@ -171,12 +220,12 @@ class AppChromeClient(private val fragmentWeakReference: WeakReference<MainActiv
         }
         openFileCallback = filePathCallback
         val webViewFragment = fragmentWeakReference.get() ?: return false
-        if (fileChooserParams?.acceptTypes?.contains(".jpg")==true ||
-            fileChooserParams?.acceptTypes?.contains(".jpeg") ==true ||
-            fileChooserParams?.acceptTypes?.contains(".png")== true)
-        {
+        if (fileChooserParams?.acceptTypes?.contains(".jpg") == true ||
+            fileChooserParams?.acceptTypes?.contains(".jpeg") == true ||
+            fileChooserParams?.acceptTypes?.contains(".png") == true
+        ) {
             webViewFragment.launchGetMultipleContents("image/*")
-        }else{
+        } else {
             webViewFragment.launchGetMultipleContents("video/*")
 
         }
