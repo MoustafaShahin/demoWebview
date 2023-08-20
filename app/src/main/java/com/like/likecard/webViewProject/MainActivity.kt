@@ -88,6 +88,10 @@ class MainActivity : AppCompatActivity() {
 
         binding.web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: String): Boolean {
+                if (request.contains("exit")) {
+                    binding.web.destroy()
+                    finish()
+                }
                 return false
             }
 
@@ -176,7 +180,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun getMultipleContentLauncher(): ActivityResultLauncher<String> {
         return this.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { list ->
-            if (list.isEmpty()) {}
+            if (list.isEmpty()) {
+            }
             chromeClient.receiveFileCallback(list.toTypedArray())
         }
     }
