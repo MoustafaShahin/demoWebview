@@ -36,8 +36,9 @@ class MainActivity : AppCompatActivity() {
     private var contentLauncher: ActivityResultLauncher<String> = getMultipleContentLauncher()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
+       binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        val receivedString = intent.getStringExtra("url")
         window.setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
             WindowManager.LayoutParams.FLAG_FULLSCREEN
@@ -84,7 +85,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.web.webChromeClient = chromeClient
 
-        binding.web.loadUrl("https://challengexspace.fra1.digitaloceanspaces.com/ChallengeX/index.html")
+        binding.web.loadUrl(receivedString.toString())
 
         binding.web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: String): Boolean {
